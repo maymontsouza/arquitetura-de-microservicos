@@ -1,0 +1,132 @@
+services:
+  api-gateway:
+    image: traefik:v3.0
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "8081:80"
+      - "8082:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - auth-service
+      - directory-service
+      - tickets-service
+    networks: [mesh]
+
+  # ---------- APP SERVICES (Node) ----------
+  auth-service:
+    build: ./auth-service
+    environment:
+      PORT: "3001"
+      # DATABASE_URL: "postgres://authuser:authpass@auth-db:5432/authdb"
+    labels:
+    - "traefik.enable=true"
+    - "traefik.docker.network=arquitetura-de-microservicos_mesh"
+    - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+    - "traefik.http.routers.auth.entrypoints=web"
+    - "traefik.http.routers.auth.middlewares=auth-stripprefix"
+    - "traefik.http.middlewares.auth-stripprefix.stripprefix.prefixes=/auth"
+    - "traefik.http.services.auth.loadbalancer.server.port=3001"
+    networks: [mesh]
+
+  directory-service:
+    build: ./directory-service
+    environment:
+      PORT: "3002"
+      DATABASE_URL: "postgres://diruser:dirpass@directory-db:5432/dirdb"
+    depends_on:
+      directory-db:
+        condition: service_healthy
+    labels:
+    - "traefik.enable=true"
+    - "traefik.docker.network=arquitetura-de-microservicos_mesh"
+    - "traefik.http.routers.directory.rule=PathPrefix(`/directory`)"
+    - "traefik.http.routers.directory.entrypoints=web"
+    - "traefik.http.routers.directory.middlewares=directory-stripprefix"
+    - "traefik.http.middlewares.directory-stripprefix.stripprefix.prefixes=/directory"
+    - "traefik.http.services.directory.loadbalancer.server.port=3002"
+    networks: [mesh]
+    
+  tickets-service:
+    build: ./tickets-service
+    environment:
+      PORT: "3003"
+      DATABASE_URL: "postgres://ticuser:ticpass@tickets-db:5432/ticketsdb"
+    depends_on:
+      tickets-db:
+        condition: service_healthy
+    labels:
+    - "traefik.enable=true"
+    - "traefik.docker.network=arquitetura-de-microservicos_mesh"
+    - "traefik.http.routers.tickets.rule=PathPrefix(`/tickets`)"
+    - "traefik.http.routers.tickets.entrypoints=web"
+    - "traefik.http.routers.tickets.middlewares=tickets-stripprefix"
+    - "traefik.http.middlewares.tickets-stripprefix.stripprefix.prefixes=/tickets"
+    - "traefik.http.services.tickets.loadbalancer.server.port=3003"
+    networks: [mesh]
+
+  # ---------- DATABASES (Postgres) ----------
+  auth-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: authuser
+      POSTGRES_PASSWORD: authpass
+      POSTGRES_DB: authdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authuser -d authdb || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - auth_pg:/var/lib/postgresql/data
+      - ./auth-service/sql:/docker-entrypoint-initdb.d:ro
+    networks: [mesh]
+
+  directory-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: diruser
+      POSTGRES_PASSWORD: dirpass
+      POSTGRES_DB: dirdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diruser -d dirdb || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - dir_pg:/var/lib/postgresql/data
+      - ./directory-service/sql:/docker-entrypoint-initdb.d:ro
+    networks: [mesh]
+
+  tickets-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ticuser
+      POSTGRES_PASSWORD: ticpass
+      POSTGRES_DB: ticketsdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticuser -d ticketsdb || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - tic_pg:/var/lib/postgresql/data
+      - ./tickets-service/sql:/docker-entrypoint-initdb.d:ro
+    networks: [mesh]
+
+networks:
+  mesh:
+    driver: bridge
+
+volumes:
+  auth_pg:
+  dir_pg:
+  tic_pg:
+
+
+
+
