@@ -1,0 +1,62 @@
+services:
+  api-gateway:
+    image: traefik:v3.0
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=mesh"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - auth-service
+      - directory-service
+      - tickets-service
+    networks: [mesh]
+
+  auth-service:
+    build: ./auth-service
+    environment:
+      PORT: "3001"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.routers.auth.middlewares=auth-stripprefix"
+      - "traefik.http.middlewares.auth-stripprefix.stripprefix.prefixes=/auth"
+      - "traefik.http.services.auth.loadbalancer.server.port=3001"
+    networks: [mesh]
+
+  directory-service:
+    build: ./directory-service
+    environment:
+      PORT: "3002"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.directory.rule=PathPrefix(`/directory`)"
+      - "traefik.http.routers.directory.entrypoints=web"
+      - "traefik.http.routers.directory.middlewares=directory-stripprefix"
+      - "traefik.http.middlewares.directory-stripprefix.stripprefix.prefixes=/directory"
+      - "traefik.http.services.directory.loadbalancer.server.port=3002"
+    networks: [mesh]
+
+  tickets-service:
+    build: ./tickets-service
+    environment:
+      PORT: "3003"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tickets.rule=PathPrefix(`/tickets`)"
+      - "traefik.http.routers.tickets.entrypoints=web"
+      - "traefik.http.routers.tickets.middlewares=tickets-stripprefix"
+      - "traefik.http.middlewares.tickets-stripprefix.stripprefix.prefixes=/tickets"
+      - "traefik.http.services.tickets.loadbalancer.server.port=3003"
+    networks: [mesh]
+
+networks:
+  mesh:
+    driver: bridge
