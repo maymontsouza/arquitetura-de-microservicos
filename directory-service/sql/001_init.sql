@@ -1,19 +1,21 @@
-create table if not exists setor (
-  id serial primary key,
-  nome text not null unique
+CREATE TABLE IF NOT EXISTS setor (
+  id SERIAL PRIMARY KEY,
+  nome TEXT NOT NULL
 );
 
-create table if not exists funcionario (
-  id serial primary key,
-  nome text not null,
-  email text not null unique,
-  setor_id int references setor(id),
-  cargo text
+CREATE TABLE IF NOT EXISTS funcionario (
+  id SERIAL PRIMARY KEY,
+  nome TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  setor_id INT NOT NULL REFERENCES setor(id),
+  cargo TEXT NOT NULL
 );
 
-insert into setor (nome) values ('TI'), ('Atendimento')
-on conflict (nome) do nothing;
+INSERT INTO setor (nome) VALUES
+  ('TI'),
+  ('Atendimento')
+ON CONFLICT DO NOTHING;
 
-insert into funcionario (nome, email, setor_id, cargo) values
-('May', 'may@example.com', 1, 'QA')
-on conflict (email) do nothing;
+INSERT INTO funcionario (nome, email, setor_id, cargo) VALUES
+  ('May', 'may@example.com', 1, 'QA')
+ON CONFLICT DO NOTHING;
