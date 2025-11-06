@@ -4,20 +4,17 @@ services:
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      # >>> forçar o Traefik a observar a network 'mesh'
+      - "--providers.docker.network=arquitetura-de-microservicos_mesh"
       - "--entrypoints.web.address=:80"
     ports:
-      - "8081:80"
-      - "8082:8080"
+      - "8081:80"     # Gateway HTTP
+      - "8082:8080"   # Dashboard/API
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    depends_on:
-      - auth-service
-      - directory-service
-      - tickets-service
-    networks: [mesh]
-    labels:
-      - "traefik.enable=true"
-
+    networks:
+      - mesh
 
   auth-db:
     image: postgres:16
@@ -91,15 +88,14 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: tickets
-    volumes:
-      - tickets-db-data:/var/lib/postgresql/data
-      - ./tickets-service/sql:/docker-entrypoint-initdb.d:ro
-    networks: [mesh]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d tickets"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      interval: 2s
+      timeout: 1s
+      retries: 15
+    volumes:
+      - ./tickets-service/sql:/docker-entrypoint-initdb.d:ro
+    networks: [mesh]
 
   tickets-service:
     build: ./tickets-service
@@ -110,7 +106,8 @@ services:
     depends_on:
       tickets-db:
         condition: service_healthy
-    networks: [mesh]
+    networks:
+      - mesh
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=arquitetura-de-microservicos_mesh"
@@ -119,6 +116,7 @@ services:
       - "traefik.http.routers.tickets.middlewares=tickets-stripprefix"
       - "traefik.http.middlewares.tickets-stripprefix.stripprefix.prefixes=/tickets"
       - "traefik.http.services.tickets.loadbalancer.server.port=3003"
+      - "traefik.http.services.tickets.loadbalancer.server.scheme=http"
 
 networks:
   mesh:

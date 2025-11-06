@@ -1,8 +1,20 @@
-import pkg from "pg";
-const { Pool } = pkg;
+import pg from "pg";
+
+const { Pool } = pg;
+
+const DATABASE_URL =
+  process.env.DATABASE_URL || "postgres://postgres:postgres@tickets-db:5432/tickets";
 
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL,
 });
 
-export const query = (text, params) => pool.query(text, params);
+export async function query(sql, params = []) {
+  const client = await pool.connect();
+  try {
+    const res = await client.query(sql, params);
+    return res;
+  } finally {
+    client.release();
+  }
+}
