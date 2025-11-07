@@ -5,12 +5,11 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # >>> forçar o Traefik a observar a network 'mesh'
       - "--providers.docker.network=arquitetura-de-microservicos_mesh"
       - "--entrypoints.web.address=:80"
     ports:
-      - "8081:80"     # Gateway HTTP
-      - "8082:8080"   # Dashboard/API
+      - "8081:80"     
+      - "8082:8080" 
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -49,7 +48,6 @@ services:
       - "traefik.http.middlewares.auth-stripprefix.stripprefix.prefixes=/auth"
       - "traefik.http.services.auth.loadbalancer.server.port=3001"
 
-
   directory-db:
     image: postgres:16
     environment:
@@ -81,8 +79,6 @@ services:
       - "traefik.http.routers.directory.entrypoints=web"
       - "traefik.http.routers.directory.middlewares=directory-stripprefix"
       - "traefik.http.middlewares.directory-stripprefix.stripprefix.prefixes=/directory"
-      - "traefik.http.services.directory.loadbalancer.server.port=3002"
-
   tickets-db:
     image: postgres:16
     environment:
@@ -110,7 +106,6 @@ services:
       - mesh
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=arquitetura-de-microservicos_mesh"
       - "traefik.http.routers.tickets.rule=PathPrefix(`/tickets`)"
       - "traefik.http.routers.tickets.entrypoints=web"
       - "traefik.http.routers.tickets.middlewares=tickets-stripprefix"

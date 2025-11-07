@@ -1,20 +1,17 @@
-import pg from "pg";
-
-const { Pool } = pg;
-
-const DATABASE_URL =
-  process.env.DATABASE_URL || "postgres://postgres:postgres@tickets-db:5432/tickets";
+import pkg from "pg";
+const { Pool } = pkg;
 
 export const pool = new Pool({
-  connectionString: DATABASE_URL,
+  connectionString: process.env.DATABASE_URL,
 });
 
-export async function query(sql, params = []) {
-  const client = await pool.connect();
+export async function ping() {
   try {
-    const res = await client.query(sql, params);
-    return res;
-  } finally {
-    client.release();
+    await pool.query("SELECT 1");
+    return true;
+  } catch (err) {
+    console.error("[db ping error]", err);
+    return false;
   }
 }
+
