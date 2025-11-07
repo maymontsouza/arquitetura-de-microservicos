@@ -1,0 +1,103 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Directory Service API",
+      "version": "1.0.0",
+      "description": "Serviço de diretório responsável por setores e funcionários."
+    },
+    "servers": [
+      {
+        "url": "http://localhost:3002",
+        "description": "Servidor local de desenvolvimento"
+      }
+    ],
+    "paths": {
+      "/health": {
+        "get": {
+          "summary": "Verifica o status do serviço",
+          "tags": ["Health"],
+          "responses": {
+            "200": {
+              "description": "Serviço ativo",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "status": { "type": "string", "example": "ok" },
+                      "service": { "type": "string", "example": "directory" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/sectors": {
+        "get": {
+          "summary": "Lista todos os setores",
+          "tags": ["Sectors"],
+          "responses": {
+            "200": {
+              "description": "Lista de setores retornada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/Sector" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/employees": {
+        "get": {
+          "summary": "Lista todos os funcionários",
+          "tags": ["Employees"],
+          "responses": {
+            "200": {
+              "description": "Lista de funcionários retornada com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": { "$ref": "#/components/schemas/Employee" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "Sector": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer", "example": 1 },
+            "nome": { "type": "string", "example": "TI" }
+          }
+        },
+        "Employee": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer", "example": 1 },
+            "nome": { "type": "string", "example": "May" },
+            "email": { "type": "string", "example": "may@example.com" },
+            "setor_id": { "type": "integer", "example": 1 },
+            "cargo": { "type": "string", "example": "QA" }
+          }
+        }
+      }
+    },
+    "tags": [
+      { "name": "Sectors", "description": "Gerenciamento de setores" },
+      { "name": "Employees", "description": "Gerenciamento de funcionários" },
+      { "name": "Health", "description": "Monitoramento do serviço" }
+    ]
+  }
+  

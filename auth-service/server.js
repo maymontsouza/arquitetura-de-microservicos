@@ -2,12 +2,21 @@ import express from "express";
 import { query } from "./db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import swaggerUi from "swagger-ui-express";
+import { readFileSync } from "fs";
 
 const app = express();
 app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const TOKEN_TTL = "1h";
+
+// Swagger
+const swaggerDocument = JSON.parse(
+  readFileSync(new URL("./swagger.json", import.meta.url))
+);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Health com ping ao DB
 app.get("/health", async (_req, res) => {
