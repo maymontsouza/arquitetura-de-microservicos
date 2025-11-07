@@ -5,4 +5,13 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-export const query = (text, params) => pool.query(text, params);
+export async function ping() {
+  try {
+    await pool.query("SELECT 1");
+    return true;
+  } catch (err) {
+    console.error("[db ping error]", err);
+    return false;
+  }
+}
+
