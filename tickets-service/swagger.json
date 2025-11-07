@@ -1,0 +1,170 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Tickets Service API",
+    "version": "1.0.0",
+    "description": "Serviço responsável por gerenciar tickets de suporte."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3003",
+      "description": "Servidor local de desenvolvimento"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Verifica o status do serviço",
+        "tags": ["Health"],
+        "responses": {
+          "200": {
+            "description": "Serviço ativo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "service": { "type": "string", "example": "tickets" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "summary": "Lista todos os tickets",
+        "tags": ["Tickets"],
+        "responses": {
+          "200": {
+            "description": "Lista de tickets retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Ticket" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cria um novo ticket",
+        "tags": ["Tickets"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TicketCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ticket criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Ticket" }
+              }
+            }
+          },
+          "400": {
+            "description": "Campos obrigatórios faltando"
+          },
+          "401": {
+            "description": "Token ausente ou inválido"
+          }
+        }
+      }
+    },
+    "/tickets": {
+      "get": {
+        "summary": "Lista todos os tickets",
+        "tags": ["Tickets"],
+        "responses": {
+          "200": {
+            "description": "Lista de tickets retornada com sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Ticket" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Cria um novo ticket (rota alternativa)",
+        "tags": ["Tickets"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/TicketCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ticket criado com sucesso",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Ticket" }
+              }
+            }
+          },
+          "400": {
+            "description": "Campos obrigatórios faltando"
+          },
+          "401": {
+            "description": "Token ausente ou inválido"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Ticket": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "titulo": { "type": "string", "example": "Erro na tela" },
+          "descricao": { "type": "string", "example": "Não carrega" },
+          "status": { "type": "string", "example": "Aberto" },
+          "setor_destino_id": { "type": "integer", "example": 2 },
+          "solicitante_id": { "type": "integer", "example": 1 }
+        }
+      },
+      "TicketCreate": {
+        "type": "object",
+        "required": ["titulo", "descricao", "setor_destino_id", "solicitante_id"],
+        "properties": {
+          "titulo": { "type": "string", "example": "Erro ao salvar" },
+          "descricao": { "type": "string", "example": "O botão não funciona" },
+          "setor_destino_id": { "type": "integer", "example": 2 },
+          "solicitante_id": { "type": "integer", "example": 1 }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    { "name": "Tickets", "description": "Gerenciamento de tickets" },
+    { "name": "Health", "description": "Monitoramento do serviço" }
+  ]
+}

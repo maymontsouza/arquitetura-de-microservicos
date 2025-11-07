@@ -1,11 +1,20 @@
 // tickets-service/server.js
 import express from "express";
 import jwt from "jsonwebtoken";
+import swaggerUi from "swagger-ui-express";
+import { readFileSync } from "fs";
 
 const app = express();
 app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+
+// Swagger
+const swaggerDocument = JSON.parse(
+  readFileSync(new URL("./swagger.json", import.meta.url))
+);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 let tickets = [
   {
