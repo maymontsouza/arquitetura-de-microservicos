@@ -1,6 +1,16 @@
 import express from "express";
+import swaggerUi from "swagger-ui-express";
+import { readFileSync } from "fs";
+
 const app = express();
 app.use(express.json());
+
+// Swagger
+const swaggerDocument = JSON.parse(
+  readFileSync(new URL("./swagger.json", import.meta.url))
+);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // mock data só para teste inicial
 const setores = [

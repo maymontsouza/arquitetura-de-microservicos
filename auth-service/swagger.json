@@ -1,0 +1,189 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "Auth Service API",
+      "version": "1.0.0",
+      "description": "Serviço de autenticação e registro de usuários com JWT."
+    },
+    "servers": [
+      {
+        "url": "http://localhost:3001",
+        "description": "Servidor local de desenvolvimento"
+      }
+    ],
+    "paths": {
+      "/health": {
+        "get": {
+          "summary": "Verifica o status do serviço e do banco de dados",
+          "tags": ["Health"],
+          "responses": {
+            "200": {
+              "description": "Serviço ativo e banco conectado",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "status": { "type": "string", "example": "ok" },
+                      "service": { "type": "string", "example": "auth" },
+                      "db": { "type": "string", "example": "up" }
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Banco de dados indisponível"
+            }
+          }
+        }
+      },
+      "/register": {
+        "post": {
+          "summary": "Registra um novo usuário",
+          "tags": ["Auth"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["name", "email", "password"],
+                  "properties": {
+                    "name": { "type": "string", "example": "May" },
+                    "email": { "type": "string", "example": "may@example.com" },
+                    "password": { "type": "string", "example": "123456" },
+                    "roles": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["USUARIO"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Usuário criado com sucesso",
+              "content": {
+                "application/json": {
+                  "schema": { "$ref": "#/components/schemas/User" }
+                }
+              }
+            },
+            "400": { "description": "Campos obrigatórios faltando" },
+            "409": { "description": "Email já cadastrado" },
+            "500": { "description": "Erro interno ao registrar" }
+          }
+        }
+      },
+      "/login": {
+        "post": {
+          "summary": "Realiza login e retorna o token JWT",
+          "tags": ["Auth"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["email", "password"],
+                  "properties": {
+                    "email": { "type": "string", "example": "may@example.com" },
+                    "password": { "type": "string", "example": "123456" }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Login bem-sucedido",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "accessToken": {
+                        "type": "string",
+                        "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      },
+                      "user": { "$ref": "#/components/schemas/User" }
+                    }
+                  }
+                }
+              }
+            },
+            "400": { "description": "Campos obrigatórios faltando" },
+            "401": { "description": "Credenciais inválidas" }
+          }
+        }
+      },
+      "/me": {
+        "get": {
+          "summary": "Retorna informações do usuário autenticado",
+          "tags": ["Auth"],
+          "security": [{ "bearerAuth": [] }],
+          "responses": {
+            "200": {
+              "description": "Dados do usuário autenticado",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "me": {
+                        "type": "object",
+                        "properties": {
+                          "sub": { "type": "integer", "example": 1 },
+                          "email": { "type": "string", "example": "may@example.com" },
+                          "roles": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "example": ["USUARIO"]
+                          },
+                          "iat": { "type": "integer", "example": 1730920000 },
+                          "exp": { "type": "integer", "example": 1730923600 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "401": { "description": "Token ausente ou inválido" }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "User": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "integer", "example": 1 },
+            "name": { "type": "string", "example": "May" },
+            "email": { "type": "string", "example": "may@example.com" },
+            "roles": {
+              "type": "array",
+              "items": { "type": "string" },
+              "example": ["USUARIO"]
+            }
+          }
+        }
+      },
+      "securitySchemes": {
+        "bearerAuth": {
+          "type": "http",
+          "scheme": "bearer",
+          "bearerFormat": "JWT"
+        }
+      }
+    },
+    "tags": [
+      { "name": "Auth", "description": "Autenticação e gerenciamento de usuários" },
+      { "name": "Health", "description": "Monitoramento do serviço" }
+    ]
+  }
+  
