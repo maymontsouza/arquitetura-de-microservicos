@@ -10,15 +10,13 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 const TOKEN_TTL = "1h";
+const TIPOS_VALIDOS = ["ADMIN", "USUARIO", "SUPORTE"];
 
-// Swagger
 const swaggerDocument = JSON.parse(
   readFileSync(new URL("./swagger.json", import.meta.url))
 );
-
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Health com ping ao DB
 app.get("/health", async (_req, res) => {
   try {
     await query("select 1");
@@ -28,44 +26,94 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-// Registro
 app.post("/register", async (req, res) => {
-  const { name, email, password, roles } = req.body || {};
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "name, email e password são obrigatórios" });
+  const { name, email, password, tipoUsuario, setor, cargo } = req.body || {};
+
+  if (!name || !email || !password || !setor || !cargo) {
+    return res.status(400).json({
+      error: "name, email, password, setor e cargo são obrigatórios",
+    });
   }
+
+  const validTypes = ["ADMIN", "USUARIO", "SUPORTE"];
+  const userType = (tipoUsuario || "USUARIO").toUpperCase();
+  if (!validTypes.includes(userType)) {
+    return res
+      .status(400)
+      .json({ error: "Tipo de usuário inválido. Use: ADMIN, USUARIO ou SUPORTE" });
+  }
+
   const hash = await bcrypt.hash(password, 10);
+
   try {
     const { rows } = await query(
-      "insert into users (name, email, password_hash, roles) values ($1,$2,$3,$4) returning id, name, email, roles",
-      [name, email, hash, Array.isArray(roles) && roles.length ? roles : ["USUARIO"]]
+      `INSERT INTO users (name, email, password_hash, roles, setor, cargo)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, email, roles, setor, cargo`,
+      [name, email, hash, [userType], setor, cargo]
     );
-    res.status(201).json(rows[0]);
+
+    const u = rows[0];
+    res.status(201).json({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      tipoUsuario: Array.isArray(u.roles) && u.roles.length ? u.roles[0] : "USUARIO",
+      setor: u.setor,
+      cargo: u.cargo,
+    });
   } catch (e) {
     if (String(e.message).includes("duplicate key")) {
       return res.status(409).json({ error: "email já cadastrado" });
     }
-    res.status(500).json({ error: "erro ao registrar" });
+    console.error(e);
+    res.status(500).json({ error: "erro ao registrar usuário" });
   }
 });
 
-// Login
+
 app.post("/login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) return res.status(400).json({ error: "email e password são obrigatórios" });
+  if (!email || !password)
+    return res.status(400).json({ error: "email e password são obrigatórios" });
 
-  const { rows } = await query("select id, name, email, password_hash, roles from users where email = $1", [email]);
+  const { rows } = await query(
+    "SELECT id, name, email, password_hash, roles, setor, cargo FROM users WHERE email = $1",
+    [email]
+  );
   const user = rows[0];
   if (!user) return res.status(401).json({ error: "credenciais inválidas" });
 
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return res.status(401).json({ error: "credenciais inválidas" });
 
-  const token = jwt.sign({ sub: user.id, email: user.email, roles: user.roles }, JWT_SECRET, { expiresIn: TOKEN_TTL });
-  res.json({ accessToken: token, user: { id: user.id, name: user.name, email: user.email, roles: user.roles } });
+  const tipoUsuario = Array.isArray(user.roles) && user.roles.length ? user.roles[0] : "USUARIO";
+
+  const token = jwt.sign(
+    {
+      sub: user.id,
+      email: user.email,
+      tipoUsuario,   
+      setor: user.setor,
+      cargo: user.cargo,
+    },
+    JWT_SECRET,
+    { expiresIn: TOKEN_TTL }
+  );
+
+  res.json({
+    accessToken: token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      tipoUsuario,   
+      setor: user.setor,
+      cargo: user.cargo,
+    },
+  });
 });
 
-// Middleware para rotas protegidas
 function auth(req, res, next) {
   const h = req.headers.authorization || "";
   const [, token] = h.split(" ");
@@ -78,7 +126,6 @@ function auth(req, res, next) {
   }
 }
 
-// Exemplo rota protegida
 app.get("/me", auth, (req, res) => {
   res.json({ me: req.user });
 });

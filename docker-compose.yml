@@ -16,7 +16,7 @@ services:
       - mesh
 
   auth-db:
-    image: postgres:16
+    image: mirror.gcr.io/library/postgres:16
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: auth
@@ -47,9 +47,9 @@ services:
       - "traefik.http.routers.auth.middlewares=auth-stripprefix"
       - "traefik.http.middlewares.auth-stripprefix.stripprefix.prefixes=/auth"
       - "traefik.http.services.auth.loadbalancer.server.port=3001"
-
+      - "traefik.http.services.auth.loadbalancer.server.scheme=http"
   directory-db:
-    image: postgres:16
+    image: mirror.gcr.io/library/postgres:16
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: directory
@@ -74,13 +74,14 @@ services:
     networks: [mesh]
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=arquitetura-de-microservicos_mesh"
       - "traefik.http.routers.directory.rule=PathPrefix(`/directory`)"
       - "traefik.http.routers.directory.entrypoints=web"
       - "traefik.http.routers.directory.middlewares=directory-stripprefix"
       - "traefik.http.middlewares.directory-stripprefix.stripprefix.prefixes=/directory"
+      - "traefik.http.services.directory.loadbalancer.server.port=3002"
+      - "traefik.http.services.directory.loadbalancer.server.scheme=http"
   tickets-db:
-    image: postgres:16
+    image: mirror.gcr.io/library/postgres:16
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: tickets
