@@ -48,11 +48,13 @@ docker compose ps
 
 2️⃣ Verificar serviços
 ```
-curl -s http://localhost:8081/auth/health
-curl -s http://localhost:8081/directory/health
-curl -s http://localhost:8081/tickets/health
+# Auth
+iwr http://localhost:8081/auth/health | Select-Object -Expand Content
+# Directory
+iwr http://localhost:8081/directory/health | Select-Object -Expand Content
+# Tickets
+iwr http://localhost:8081/tickets/health | Select-Object -Expand Content
 ```
-
 ---
 
 ###  🔐 Fluxo de Autenticação JWT
