@@ -1,15 +1,18 @@
 {
   "name": "tickets-service",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Microserviço de chamados",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "express": "^4.19.0",
+    "pg": "^8.11.5",
     "jsonwebtoken": "^9.0.2",
-    "swagger-ui-express": "^4.6.3"
+    "swagger-ui-express": "^5.0.1"
   }
 }
+
 

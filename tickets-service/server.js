@@ -1,4 +1,5 @@
 import express from "express";
+import { query } from "./db.js";
 import jwt from "jsonwebtoken";
 import swaggerUi from "swagger-ui-express";
 import { readFileSync } from "fs";
@@ -13,164 +14,249 @@ const swaggerDocument = JSON.parse(
 );
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-const VALID_STATUSES = new Set([
-  "Aberto",
-  "Em Andamento",
-  "Aguardando Resposta",
-  "Resolvido",
-  "Fechado",
-]);
-
-function assertValidStatus(value) {
-  if (!VALID_STATUSES.has(value)) {
-    const allowed = Array.from(VALID_STATUSES).join(", ");
-    const msg = `status inválido. Use um destes: ${allowed}`;
-    const err = new Error(msg);
-    err.code = "INVALID_STATUS";
-    throw err;
-  }
-}
-
-let tickets = [
-  {
-    id: 1,
-    titulo: "Erro na tela",
-    descricao: "Não carrega",
-    status: "Aberto",
-    setor_destino_id: 2,
-    solicitante_id: 1,
-  },
-];
-
-let comments = [];
-
 function auth(req, res, next) {
   const h = req.headers.authorization || "";
   const [, token] = h.split(" ");
   if (!token) return res.status(401).json({ error: "token ausente" });
+
   try {
     req.user = jwt.verify(token, JWT_SECRET);
-    next();
+    return next();
   } catch {
     return res.status(401).json({ error: "token inválido" });
   }
 }
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "tickets" });
+app.get("/health", async (_req, res) => {
+  try {
+    await query("select 1");
+    res.json({ status: "ok", service: "tickets" });
+  } catch {
+    res.status(500).json({ status: "error", service: "tickets" });
+  }
 });
 
-function handleError(res, e) {
-  if (e?.code === "INVALID_STATUS") {
-    return res.status(400).json({ error: e.message });
-  }
-  return res.status(500).json({ error: "erro interno" });
-}
-
-app.get("/", (_req, res) => res.json(tickets));
-app.get("/tickets", (_req, res) => res.json(tickets));
-
-app.get("/statuses", (_req, res) => res.json(Array.from(VALID_STATUSES)));
-app.get("/tickets/statuses", (_req, res) => res.json(Array.from(VALID_STATUSES)));
-
-function createTicket(req, res) {
+app.get("/", async (_req, res) => {
   try {
-    const { titulo, descricao, setor_destino_id, solicitante_id, status } = req.body || {};
-    if (!titulo || !descricao || !setor_destino_id || !solicitante_id) {
-      return res.status(400).json({ error: "Campos obrigatórios faltando." });
+    const { rows } = await query(
+      `
+      SELECT
+        id,
+        titulo,
+        descricao,
+        status,
+        setor_destino_id AS "setorDestinoId",
+        solicitante_id   AS "solicitanteId",
+        created_at       AS "dataAbertura",
+        updated_at       AS "dataUltimaAtualizacao"
+      FROM tickets
+      ORDER BY id DESC
+      `
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "erro ao listar tickets" });
+  }
+});
+
+app.get("/my", auth, async (req, res) => {
+  const userId = req.user.sub;
+
+  try {
+    const { rows } = await query(
+      `
+      SELECT
+        id,
+        titulo,
+        descricao,
+        status,
+        setor_destino_id AS "setorDestinoId",
+        solicitante_id   AS "solicitanteId",
+        created_at       AS "dataAbertura",
+        updated_at       AS "dataUltimaAtualizacao"
+      FROM tickets
+      WHERE solicitante_id = $1
+      ORDER BY id DESC
+      `,
+      [userId]
+    );
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "erro ao listar tickets do usuário" });
+  }
+});
+
+app.get("/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) {
+    return res.status(400).json({ error: "id inválido" });
+  }
+
+  try {
+    const { rows } = await query(
+      `
+      SELECT
+        id,
+        titulo,
+        descricao,
+        status,
+        setor_destino_id AS "setorDestinoId",
+        solicitante_id   AS "solicitanteId",
+        created_at       AS "dataAbertura",
+        updated_at       AS "dataUltimaAtualizacao"
+      FROM tickets
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ error: "ticket não encontrado" });
     }
-    if (status !== undefined) assertValidStatus(status);
 
-    const novo = {
-      id: tickets.length + 1,
-      titulo,
-      descricao,
-      status: status ?? "Aberto",
-      setor_destino_id,
-      solicitante_id,
-    };
-    tickets.push(novo);
-    res.status(201).json(novo);
+    res.json(rows[0]);
   } catch (e) {
-    handleError(res, e);
+    console.error(e);
+    res.status(500).json({ error: "erro ao buscar ticket" });
   }
-}
-app.post("/", auth, createTicket);
-app.post("/tickets", auth, createTicket);
+});
 
-function patchTicket(req, res) {
+app.post("/", auth, async (req, res) => {
+  const { titulo, descricao, setorDestinoId } = req.body || {};
+
+  if (!titulo || !descricao || !setorDestinoId) {
+    return res.status(400).json({
+      error: "titulo, descricao e setorDestinoId são obrigatórios",
+    });
+  }
+
+  const userId = req.user.sub;
+
   try {
-    const id = Number(req.params.id);
-    const { status, titulo, descricao } = req.body || {};
-    const t = tickets.find((x) => x.id === id);
-    if (!t) return res.status(404).json({ error: "ticket não encontrado" });
+    const { rows } = await query(
+      `
+      INSERT INTO tickets (titulo, descricao, status, setor_destino_id, solicitante_id)
+      VALUES ($1,$2,'Aberto',$3,$4)
+      RETURNING
+        id,
+        titulo,
+        descricao,
+        status,
+        setor_destino_id AS "setorDestinoId",
+        solicitante_id   AS "solicitanteId",
+        created_at       AS "dataAbertura",
+        updated_at       AS "dataUltimaAtualizacao"
+      `,
+      [titulo, descricao, setorDestinoId, userId]
+    );
 
-    if (status !== undefined) assertValidStatus(status);
-    if (status !== undefined) t.status = status;
-    if (titulo !== undefined) t.titulo = titulo;
-    if (descricao !== undefined) t.descricao = descricao;
-
-    t.updated_at = new Date();
-    res.json(t);
+    res.status(201).json(rows[0]);
   } catch (e) {
-    handleError(res, e);
+    console.error(e);
+    res.status(500).json({ error: "erro ao criar ticket" });
   }
-}
+});
 
-function patchTicketStatus(req, res) {
+app.patch("/:id/status", auth, async (req, res) => {
+  const id = Number(req.params.id);
+  const { status } = req.body || {};
+  if (!id || !status) {
+    return res.status(400).json({ error: "id e status são obrigatórios" });
+  }
+
   try {
-    const id = Number(req.params.id);
-    const { status } = req.body || {};
-    const t = tickets.find((x) => x.id === id);
-    if (!t) return res.status(404).json({ error: "ticket não encontrado" });
-    if (!status) return res.status(400).json({ error: "status obrigatório" });
+    const { rows } = await query(
+      `
+      UPDATE tickets
+      SET status = $2,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id,
+        titulo,
+        descricao,
+        status,
+        setor_destino_id AS "setorDestinoId",
+        solicitante_id   AS "solicitanteId",
+        created_at       AS "dataAbertura",
+        updated_at       AS "dataUltimaAtualizacao"
+      `,
+      [id, status]
+    );
 
-    assertValidStatus(status);
-    t.status = status;
-    t.updated_at = new Date();
-    res.json(t);
+    if (!rows.length) {
+      return res.status(404).json({ error: "ticket não encontrado" });
+    }
+
+    res.json(rows[0]);
   } catch (e) {
-    handleError(res, e);
+    console.error(e);
+    res.status(500).json({ error: "erro ao atualizar status" });
   }
-}
+});
 
-app.patch("/tickets/:id", auth, patchTicket);
-app.patch("/tickets/:id/status", auth, patchTicketStatus);
-
-app.patch("/:id", auth, patchTicket);
-app.patch("/:id/status", auth, patchTicketStatus);
-
-function listComments(req, res) {
-  const id = Number(req.params.id);
-  const ticket = tickets.find((t) => t.id === id);
-  if (!ticket) return res.status(404).json({ error: "ticket não encontrado" });
-  res.json(comments.filter((c) => c.ticket_id === id));
-}
-
-function addComment(req, res) {
-  const id = Number(req.params.id);
+app.post("/:id/comments", auth, async (req, res) => {
+  const ticketId = Number(req.params.id);
   const { mensagem } = req.body || {};
-  if (!mensagem) return res.status(400).json({ error: "mensagem obrigatória" });
 
-  const ticket = tickets.find((t) => t.id === id);
-  if (!ticket) return res.status(404).json({ error: "ticket não encontrado" });
+  if (!ticketId || !mensagem) {
+    return res
+      .status(400)
+      .json({ error: "id do ticket e mensagem são obrigatórios" });
+  }
 
-  const novo = {
-    id: comments.length + 1,
-    ticket_id: id,
-    author_id: req.user?.id || 0,
-    mensagem,
-    created_at: new Date(),
-  };
-  comments.push(novo);
-  res.status(201).json(novo);
-}
+  try {
+    const { rows } = await query(
+      `
+      INSERT INTO ticket_comments (ticket_id, author_id, mensagem)
+      VALUES ($1,$2,$3)
+      RETURNING
+        id,
+        ticket_id AS "ticketId",
+        author_id AS "authorId",
+        mensagem,
+        created_at AS "criadoEm"
+      `,
+      [ticketId, req.user.sub, mensagem]
+    );
 
-app.get("/tickets/:id/comments", listComments);
-app.post("/tickets/:id/comments", auth, addComment);
+    res.status(201).json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "erro ao adicionar comentário" });
+  }
+});
 
-app.get("/:id/comments", listComments);
-app.post("/:id/comments", auth, addComment);
+app.get("/:id/comments", async (req, res) => {
+  const ticketId = Number(req.params.id);
+  if (!ticketId) {
+    return res.status(400).json({ error: "id inválido" });
+  }
+
+  try {
+    const { rows } = await query(
+      `
+      SELECT
+        id,
+        ticket_id AS "ticketId",
+        author_id AS "authorId",
+        mensagem,
+        created_at AS "criadoEm"
+      FROM ticket_comments
+      WHERE ticket_id = $1
+      ORDER BY id ASC
+      `,
+      [ticketId]
+    );
+
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "erro ao listar comentários" });
+  }
+});
 
 const port = process.env.PORT || 3003;
 app.listen(port, () => console.log(`[tickets] up on :${port}`));

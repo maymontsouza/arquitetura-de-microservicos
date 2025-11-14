@@ -6,11 +6,9 @@
     "description": "Serviço responsável por gerenciar tickets de suporte."
   },
   "servers": [
-    {
-      "url": "http://localhost:3003",
-      "description": "Servidor local de desenvolvimento"
-    }
-  ],
+     { "url": "/tickets", "description": "Gateway :8081 (recomendado)" },
+     { "url": "http://localhost:3003", "description": "Porta interna do container" }
+],
   "paths": {
     "/health": {
       "get": {
