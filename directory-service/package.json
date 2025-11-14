@@ -1,14 +1,17 @@
 {
   "name": "directory-service",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Directory Service - setores e employees",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "pg": "^8.12.0",
-    "swagger-ui-express": "^5.0.1"
+    "pg": "^8.11.3",
+    "swagger-ui-express": "^5.0.0",
+    "jsonwebtoken": "^9.0.2"
   }
 }
+

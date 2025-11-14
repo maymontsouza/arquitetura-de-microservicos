@@ -20,6 +20,32 @@ const swaggerDocument = JSON.parse(
 );
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
+
+function auth(req, res, next) {
+  const h = req.headers.authorization || "";
+  const [, token] = h.split(" ");
+  if (!token) return res.status(401).json({ error: "token ausente" });
+
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: "token inválido" });
+  }
+}
+
+function requireRole(...allowed) {
+  return (req, res, next) => {
+    const tipo = req.user?.tipoUsuario;
+    if (!tipo || !allowed.includes(tipo)) {
+      return res
+        .status(403)
+        .json({ error: "acesso negado para o tipo de usuário atual" });
+    }
+    next();
+  };
+}
+
 app.get("/health", async (_req, res) => {
   try {
     await query("select 1");
@@ -29,7 +55,7 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-app.get("/user-types", (_req, res) => {
+app.get("/user-types", auth, requireRole("ADMIN"), (_req, res) => {
   res.json(
     TIPOS_VALIDOS.map((tipo) => ({
       codigo: tipo,
@@ -51,6 +77,7 @@ async function ensureSectorExists(nome) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome: nome.trim() }),
     });
+
     if (![200, 201, 409].includes(resp.status)) {
       const t = await resp.text();
       console.warn(
@@ -62,13 +89,20 @@ async function ensureSectorExists(nome) {
   }
 }
 
-async function createDirectoryEmployee({ nome, email, setor, cargo, origemUsuarioId }) {
+async function createDirectoryEmployee({
+  nome,
+  email,
+  setor,
+  cargo,
+  origemUsuarioId,
+}) {
   try {
     const resp = await fetch(`${DIRECTORY_BASE_URL}/employees`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nome, email, setor, cargo, origemUsuarioId }),
     });
+
     if (![200, 201].includes(resp.status)) {
       const t = await resp.text();
       console.warn(
@@ -91,9 +125,9 @@ app.post("/register", async (req, res) => {
 
   const userType = (tipoUsuario || "USUARIO").toUpperCase();
   if (!TIPOS_VALIDOS.includes(userType)) {
-    return res
-      .status(400)
-      .json({ error: "Tipo de usuário inválido. Use: ADMIN, USUARIO ou SUPORTE" });
+    return res.status(400).json({
+      error: "Tipo de usuário inválido. Use: ADMIN, USUARIO ou SUPORTE",
+    });
   }
 
   const hash = await bcrypt.hash(password, 10);
@@ -136,14 +170,18 @@ app.post("/register", async (req, res) => {
 
 app.post("/login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password)
-    return res.status(400).json({ error: "email e password são obrigatórios" });
+  if (!email || !password) {
+    return res
+      .status(400)
+      .json({ error: "email e password são obrigatórios" });
+  }
 
   const { rows } = await query(
     `SELECT id, name, email, password_hash, tipo_usuario AS "tipoUsuario", setor, cargo
      FROM users WHERE email = $1`,
     [email]
   );
+
   const user = rows[0];
   if (!user) return res.status(401).json({ error: "credenciais inválidas" });
 
@@ -175,21 +213,11 @@ app.post("/login", async (req, res) => {
   });
 });
 
-function auth(req, res, next) {
-  const h = req.headers.authorization || "";
-  const [, token] = h.split(" ");
-  if (!token) return res.status(401).json({ error: "token ausente" });
-  try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ error: "token inválido" });
-  }
-}
 
 app.get("/me", auth, (req, res) => {
   res.json({ me: req.user });
 });
+
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => console.log(`[auth] up on :${port}`));

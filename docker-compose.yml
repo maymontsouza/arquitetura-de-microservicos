@@ -72,6 +72,7 @@ services:
     environment:
       PORT: "3002"
       DATABASE_URL: "postgres://postgres:postgres@directory-db:5432/directory"
+      JWT_SECRET: "dev-secret-change-me"
     depends_on:
       directory-db:
         condition: service_healthy

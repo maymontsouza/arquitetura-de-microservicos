@@ -1,159 +1,174 @@
-import { query } from "./db.js";
 import express from "express";
+import { query } from "./db.js";
 import swaggerUi from "swagger-ui-express";
 import { readFileSync } from "fs";
+import jwt from "jsonwebtoken";
 
 const app = express();
 app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 
 const swaggerDocument = JSON.parse(
   readFileSync(new URL("./swagger.json", import.meta.url))
 );
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-async function handleHealth(_req, res) {
+// LOG SIMPLES pra gente ver se o Traefik está chegando aqui
+app.use((req, _res, next) => {
+  console.log("[directory] req:", req.method, req.url);
+  next();
+});
+
+function auth(req, res, next) {
+  const h = req.headers.authorization || "";
+  const [, token] = h.split(" ");
+  if (!token) return res.status(401).json({ error: "token ausente" });
+
   try {
-    await query("SELECT 1");
-    res.json({ status: "ok", service: "directory", db: "up" });
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
   } catch {
-    res
-      .status(500)
-      .json({ status: "error", service: "directory", db: "down" });
+    return res.status(401).json({ error: "token inválido" });
   }
 }
 
-app.get("/health", handleHealth);
-app.get("/directory/health", handleHealth);
+function requireRole(...allowed) {
+  return (req, res, next) => {
+    const tipo = req.user?.tipoUsuario;
+    if (!tipo || !allowed.includes(tipo)) {
+      return res
+        .status(403)
+        .json({ error: "acesso negado para o tipo de usuário atual" });
+    }
+    next();
+  };
+}
 
-app.get("/sectors", async (_req, res) => {
+// IMPORTANTE: aqui só usamos /health (sem /directory),
+// porque o Traefik vai remover o /directory antes.
+app.get("/health", async (_req, res) => {
   try {
-    const { rows } = await query("SELECT id, nome FROM setor ORDER BY id");
-    res.json(rows);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "erro ao listar setores" });
+    await query("select 1");
+    res.json({ status: "ok", service: "directory" });
+  } catch {
+    res.status(500).json({ status: "error", service: "directory" });
   }
 });
 
-app.get("/directory/sectors", async (req, res) => {
-  return app._router.handle({ ...req, url: "/sectors", method: "GET" }, res);
-});
-
-app.post("/sectors", async (req, res) => {
+app.post("/sectors", auth, requireRole("ADMIN"), async (req, res) => {
   const { nome } = req.body || {};
   if (!nome || !nome.trim()) {
-    return res.status(400).json({ error: "campo nome é obrigatório" });
+    return res.status(400).json({ error: "nome é obrigatório" });
   }
 
-  try {
-    const result = await query(
-      `
-      WITH ins AS (
-        INSERT INTO setor (nome)
-        VALUES ($1)
-        ON CONFLICT (nome) DO NOTHING
-        RETURNING id, nome
-      )
-      SELECT id, nome FROM ins
-      UNION ALL
-      SELECT id, nome FROM setor WHERE nome = $1
-      LIMIT 1;
-      `,
-      [nome.trim()]
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "erro ao criar setor" });
-  }
-});
-
-app.post("/directory/sectors", async (req, res) => {
-  return app._router.handle({ ...req, url: "/sectors", method: "POST" }, res);
-});
-
-async function handleListEmployees(_req, res) {
   try {
     const { rows } = await query(
       `
-      SELECT e.id,
-             e.nome,
-             e.email,
-             e.cargo,
-             e.origem_usuario_id AS "origemUsuarioId",
-             s.id   AS "setorId",
-             s.nome AS "setorNome"
-      FROM employees e
-      LEFT JOIN setor s ON s.id = e.setor_id
-      ORDER BY e.id
-      `
+      INSERT INTO setor (nome)
+      VALUES ($1)
+      ON CONFLICT (nome) DO UPDATE SET nome = EXCLUDED.nome
+      RETURNING id, nome
+      `,
+      [nome.trim()]
     );
-    res.json(rows);
+    res.status(201).json(rows[0]);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "erro ao listar funcionários" });
+    res.status(500).json({ error: "erro ao criar/atualizar setor" });
   }
-}
+});
 
-app.get("/employees", handleListEmployees);
-app.get("/directory/employees", handleListEmployees);
+app.get(
+  "/sectors",
+  auth,
+  requireRole("ADMIN", "SUPORTE"),
+  async (_req, res) => {
+    try {
+      const { rows } = await query(
+        `SELECT id, nome FROM setor ORDER BY nome ASC`
+      );
+      res.json(rows);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "erro ao listar setores" });
+    }
+  }
+);
 
 app.post("/employees", async (req, res) => {
-  const { nome, email, setor, setorId, cargo, origemUsuarioId } = req.body || {};
+  const { nome, email, setor, cargo, origemUsuarioId } = req.body || {};
 
-  if (!nome || !email) {
+  if (!nome || !email || !cargo) {
     return res
       .status(400)
-      .json({ error: "nome e email são obrigatórios" });
+      .json({ error: "nome, email e cargo são obrigatórios" });
   }
 
   try {
-    let sid = setorId ?? null;
-
-    if (!sid && setor) {
-      const r = await query(
+    let setorId = null;
+    if (setor && setor.trim()) {
+      const { rows: setorRows } = await query(
         `
-        WITH s AS (
-          INSERT INTO setor (nome)
-          VALUES ($1)
-          ON CONFLICT (nome) DO NOTHING
-          RETURNING id
-        )
-        SELECT id FROM s
-        UNION ALL
-        SELECT id FROM setor WHERE nome = $1
-        LIMIT 1;
+        INSERT INTO setor (nome)
+        VALUES ($1)
+        ON CONFLICT (nome) DO UPDATE SET nome = EXCLUDED.nome
+        RETURNING id
         `,
         [setor.trim()]
       );
-      sid = r.rows[0]?.id ?? null;
+      setorId = setorRows[0].id;
     }
 
-    const ins = await query(
+    const { rows } = await query(
       `
       INSERT INTO employees (nome, email, cargo, setor_id, origem_usuario_id)
       VALUES ($1,$2,$3,$4,$5)
-      RETURNING id,
-                nome,
-                email,
-                cargo,
-                setor_id          AS "setorId",
-                origem_usuario_id AS "origemUsuarioId"
+      ON CONFLICT (email) DO UPDATE
+        SET nome = EXCLUDED.nome,
+            cargo = EXCLUDED.cargo,
+            setor_id = EXCLUDED.setor_id,
+            origem_usuario_id = EXCLUDED.origem_usuario_id
+      RETURNING id, nome, email, cargo, setor_id AS "setorId", origem_usuario_id AS "origemUsuarioId"
       `,
-      [nome, email, cargo ?? null, sid, origemUsuarioId ?? null]
+      [nome, email, cargo, setorId, origemUsuarioId || null]
     );
 
-    res.status(201).json(ins.rows[0]);
+    res.status(201).json(rows[0]);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "erro ao criar funcionário" });
+    res.status(500).json({ error: "erro ao criar/atualizar employee" });
   }
 });
 
-app.post("/directory/employees", async (req, res) => {
-  return app._router.handle({ ...req, url: "/employees", method: "POST" }, res);
-});
+app.get(
+  "/employees",
+  auth,
+  requireRole("ADMIN", "SUPORTE"),
+  async (_req, res) => {
+    try {
+      const { rows } = await query(
+        `
+        SELECT
+          e.id,
+          e.nome,
+          e.email,
+          e.cargo,
+          e.origem_usuario_id AS "origemUsuarioId",
+          s.id   AS "setorId",
+          s.nome AS "setorNome"
+        FROM employees e
+        LEFT JOIN setor s ON s.id = e.setor_id
+        ORDER BY e.nome ASC
+        `
+      );
+      res.json(rows);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: "erro ao listar employees" });
+    }
+  }
+);
 
 const port = process.env.PORT || 3002;
 app.listen(port, () => console.log(`[directory] up on :${port}`));

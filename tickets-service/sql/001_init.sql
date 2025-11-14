@@ -3,12 +3,12 @@ CREATE TABLE IF NOT EXISTS tickets (
   titulo           TEXT NOT NULL,
   descricao        TEXT NOT NULL,
   status           TEXT NOT NULL DEFAULT 'Aberto' CHECK (status IN (
-    'Aberto',
-    'Em Andamento',
-    'Aguardando Resposta',
-    'Resolvido',
-    'Fechado'
-  )),
+                      'Aberto',
+                      'Em Andamento',
+                      'Aguardando Resposta',
+                      'Resolvido',
+                      'Fechado'
+                    )),
   setor_destino_id INTEGER NOT NULL,
   solicitante_id   INTEGER NOT NULL,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -34,14 +34,11 @@ CREATE TABLE IF NOT EXISTS ticket_comments (
   ticket_id  INT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
   author_id  INT NOT NULL,
   mensagem   TEXT NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_tickets_status
-  ON tickets(status);
-
-CREATE INDEX IF NOT EXISTS idx_comments_ticket_id
-  ON ticket_comments(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+CREATE INDEX IF NOT EXISTS idx_comments_ticket_id ON ticket_comments(ticket_id);
 
 INSERT INTO tickets (titulo, descricao, status, setor_destino_id, solicitante_id)
 VALUES ('Erro na tela', 'Não carrega', 'Aberto', 2, 1)
