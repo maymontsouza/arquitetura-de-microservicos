@@ -45,8 +45,6 @@ function requireRole(...allowed) {
   };
 }
 
-// IMPORTANTE: aqui só usamos /health (sem /directory),
-// porque o Traefik vai remover o /directory antes.
 app.get("/health", async (_req, res) => {
   try {
     await query("select 1");
