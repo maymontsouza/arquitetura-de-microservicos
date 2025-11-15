@@ -14,7 +14,6 @@ const swaggerDocument = JSON.parse(
 );
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// LOG SIMPLES pra gente ver se o Traefik está chegando aqui
 app.use((req, _res, next) => {
   console.log("[directory] req:", req.method, req.url);
   next();
