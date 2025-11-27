@@ -1,0 +1,31 @@
+name: CI - Tickets Service
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-tickets-service:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependências do Tickets Service
+        working-directory: ./tickets-service
+        run: npm install
+
+      - name: Rodar testes com cobertura do Tickets Service
+        working-directory: ./tickets-service
+        run: npm test -- --coverage
