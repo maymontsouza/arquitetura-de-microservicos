@@ -30,11 +30,11 @@ jobs:
         working-directory: ./tickets-service
         run: npm test -- --coverage
 
-      - name: Análise de código com SonarQube
-        uses: SonarSource/sonarqube-scan-action@v1.2.0
+      - name: Análise de código com SonarCloud
+        uses: sonarsource/sonarcloud-github-action@v2
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           projectBaseDir: ./tickets-service
 
