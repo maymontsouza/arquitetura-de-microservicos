@@ -1,4 +1,7 @@
 module.exports = {
-  testEnvironment: "node",
-  transform: {},
+  testEnvironment: 'node',
+
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageReporters: ['lcov', 'text'],
 };
