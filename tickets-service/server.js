@@ -97,7 +97,7 @@ app.get("/my", auth, async (req, res) => {
     res.json(rows);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "erro ao listar tickets do usuário" });
+    res.status(500).json({ error: "erro ao listar tickets do usuário atual" });
   }
 });
 
