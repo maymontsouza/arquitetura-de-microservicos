@@ -1,6 +1,6 @@
 # 🧩 Arquitetura de Microserviços — Sistema de Chamados #
 
-Este repositório contém a implementação de um **Sistema de Chamados** usando **arquitetura de microserviços**, com **API Gateway (Traefik)**, **autenticação via JWT**, bancos **PostgreSQL** separados por serviço, além de **Docker Compose** para orquestração de ambiente e **GitHub Actions + SonarCloud** para CI/CD e qualidade.
+**Sistema de Chamados** usando **arquitetura de microserviços**, com **API Gateway (Traefik)**, **autenticação via JWT**, bancos **PostgreSQL** separados por serviço, além de **Docker Compose** para orquestração de ambiente e **GitHub Actions + SonarCloud** para CI/CD e qualidade.
 ---
 ## 🏗 Visão Geral da Arquitetura
 
@@ -126,7 +126,7 @@ docker compose -f docker-compose.monitoring.yml up -d
 - Grafana → http://localhost:3000
 ---
 ## 🧭 Fluxo de Uso da API
-COLOCAR OS DADOS DA COLETICTION DO POSTMAN
+
 ---
 
 ## 🧪 Testes Automatizados (Tickets Service)
