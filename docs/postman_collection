@@ -1,0 +1,502 @@
+{
+	"info": {
+		"_postman_id": "33e25568-7b62-4fa8-b3c1-e6639f6d4f6b",
+		"name": "Sistema de Chamados com Microserviços",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "17332168"
+	},
+	"item": [
+		{
+			"name": "API Gateway",
+			"item": [
+				{
+					"name": "Verificar status do Auth Service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/auth/health",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"auth",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verificar status do Directory Service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/directory/health",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"directory",
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verificar status do Tickets Service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/tickets/health",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"tickets",
+								"health"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "AUTH service",
+			"item": [
+				{
+					"name": "Registrar usuário (criar conta)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"May\",\n    \"email\": \"may-user@example.com\",\n    \"password\": \"123456\",\n    \"tipoUsuario\": \"USUARIO\",\n    \"setor\": \"TI\",\n    \"cargo\": \"Administrador\"\n  }"
+						},
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/auth/register",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login (gerar token JWT)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"may-user@example.com\",\n    \"password\": \"123456\"\n  }"
+						},
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/auth/login",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Me (dados do usuário autenticado)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{TOKEN}}"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/auth/me",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Listar tipos de usuário",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{TOKEN}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/auth/user-types",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"auth",
+								"user-types"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "DIRECTORY service",
+			"item": [
+				{
+					"name": "Criar setor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bear {{TOKEN}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{ \"nome\": \"Financeiro\" }\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/directory/sectors",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"directory",
+								"sectors"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Listar setores",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bear {{TOKEN}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/directory/sectors",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"directory",
+								"sectors"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Listar usuários",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bear {{TOKEN}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{BASE_URL_LOCAL}}/directory/employees",
+							"host": [
+								"{{BASE_URL_LOCAL}}"
+							],
+							"path": [
+								"directory",
+								"employees"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "TICKETS service",
+			"item": [
+				{
+					"name": "Tickets",
+					"item": [
+						{
+							"name": "Criar ticket",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{TOKEN}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"titulo\": \"testeeee criação ticketsss usuario\",\n  \"descricao\": \"No celular não é possível fechar a tela de avaliação\",\n  \"setorDestinoId\": 1\n}"
+								},
+								"url": {
+									"raw": "{{BASE_URL_LOCAL}}/tickets",
+									"host": [
+										"{{BASE_URL_LOCAL}}"
+									],
+									"path": [
+										"tickets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Listar todos os tickets",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BASE_URL_LOCAL}}/tickets",
+									"host": [
+										"{{BASE_URL_LOCAL}}"
+									],
+									"path": [
+										"tickets"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Buscar ticket por ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{TOKEN}}",
+										"type": "text"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BASE_URL_LOCAL}}/tickets/2",
+									"host": [
+										"{{BASE_URL_LOCAL}}"
+									],
+									"path": [
+										"tickets",
+										"2"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Listar tickets do usuário logado",
+							"protocolProfileBehavior": {
+								"disableBodyPruning": true
+							},
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{TOKEN}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{BASE_URL_LOCAL}}/tickets/my",
+									"host": [
+										"{{BASE_URL_LOCAL}}"
+									],
+									"path": [
+										"tickets",
+										"my"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Atualizar status do ticket",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{TOKEN}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"status\": \"Resolvido\"}"
+								},
+								"url": {
+									"raw": "{{BASE_URL_LOCAL}}/tickets/1/status",
+									"host": [
+										"{{BASE_URL_LOCAL}}"
+									],
+									"path": [
+										"tickets",
+										"1",
+										"status"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Comentários",
+					"item": [
+						{
+							"name": "Adicionar comentário ao ticket",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{TOKEN}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\"autor_id\": 2, \"mensagem\": \"Pode verificar esse erro? por favor, comentário teste\"}"
+								},
+								"url": {
+									"raw": "{{BASE_URL_LOCAL}}/tickets/1/comments",
+									"host": [
+										"{{BASE_URL_LOCAL}}"
+									],
+									"path": [
+										"tickets",
+										"1",
+										"comments"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Listar comentários do ticket",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{TOKEN}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{BASE_URL_LOCAL}}/tickets/1/comments",
+									"host": [
+										"{{BASE_URL_LOCAL}}"
+									],
+									"path": [
+										"tickets",
+										"1",
+										"comments"
+									],
+									"query": [
+										{
+											"key": "",
+											"value": null,
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	]
+}
