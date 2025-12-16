@@ -126,7 +126,15 @@ docker compose -f docker-compose.monitoring.yml up -d
 - Grafana → http://localhost:3000
 ---
 ## 🧭 Fluxo de Uso da API
+<details>
+  <summary><strong>📬 Collection do Postman</strong></summary>
+  [Clique aqui para baixar](./docs/postman_collection.json)
+</details>
 
+<details>
+  <summary><strong>📄 Documento Completo do Projeto (PDF)</strong></summary>
+  [Clique aqui para abrir](./docs/documento_projeto.pdf)
+</details>
 ---
 
 ## 🧪 Testes Automatizados (Tickets Service)
